@@ -1,0 +1,94 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sbot-deployment-{TENANT_ID}
+  namespace: {NAMESPACE}
+  labels:
+    app: sbot-{TENANT_ID}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sbot-{TENANT_ID}
+  template:
+    metadata:
+      labels:
+        app: sbot-{TENANT_ID}
+      annotations:
+        pod.boostport.com/vault-approle: core-baseinfra
+        pod.boostport.com/vault-init-container: install
+    spec:
+      initContainers:
+      - name: install
+        image: localhost:5000/kubernetes-vault-init:0.5.0
+        securityContext:
+          runAsUser: 1999
+        env:
+        - name: VAULT_ROLE_ID
+          value: {VAULT_ROLE_ID}
+        - name: CERT_COMMON_NAME
+          value: {EXTERNAL_ACCESS_HOST}
+        volumeMounts:
+        - name: vault-token
+          mountPath: /var/run/secrets/boostport.com
+      containers:
+      - name: sbot
+        image: {IMAGE_REPOSITORY}
+        args:
+        - "chatbot"
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 100m
+            memory: 600Mi
+          limits:
+            cpu: 2
+            memory: 1536Mi
+        livenessProbe:
+          httpGet:
+            path: /version
+            port: 3000
+            scheme: HTTPS
+          initialDelaySeconds: 360
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /version
+            port: 3000
+            scheme: HTTPS
+          initialDelaySeconds: 45
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        # common env for all the collaboration
+        - name: ENV_TYPE
+          value: "kubernetes"
+        volumeMounts:
+        - name: vault-token
+          mountPath: /var/run/secrets/boostport.com
+        - name: -sbot-scripts
+          mountPath: /opt/sbot/scripts
+          subPath: {TENANT_ID}/{script_path}
+        - name: -sbot-log
+          mountPath: /var/opt/sbot/log
+          subPath: {TENANT_ID}/{log_path}
+      - name: kubernetes-vault-renew
+        image: localhost:5000/kubernetes-vault-renew:0.5.0
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: vault-token
+          mountPath: /var/run/secrets/boostport.com
+      volumes:
+      - name: -sbot-log
+        persistentVolumeClaim:
+          claimName: {log-pv-claim}
+      - name: -sbot-scripts
+        persistentVolumeClaim:
+          claimName: {script-pv-claim}
+      - name: vault-token
+        emptyDir: {}

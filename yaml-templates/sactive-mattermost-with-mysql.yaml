@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mattermost-svc
+  namespace: core
+spec:
+  type: NodePort
+  ports:
+  - name: mm-server
+    port: 8065
+    targetPort: 8065
+    nodePort: 8065
+  selector:
+    app: mattermost
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mattermost-deployment
+  namespace: core
+  labels:
+    app: mattermost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mattermost
+  template:
+    metadata:
+      labels:
+        app: mattermost
+    spec:
+      nodeSelector:
+        master: "true"
+      containers:
+      - name: mattermost
+        image: {IMAGE_REPOSITORY}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MM_SQLSETTINGS_DRIVERNAME
+          value: "mysql"
+        - name: MM_SQLSETTINGS_DATASOURCE
+          value: "{DATABASE_USERNAME}:{DATABASE_PASSWORD}@tcp({DATABASE_HOST_ADDRESS}:{DATABASE_PORT})/{DATABASE_NAME}?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s"
+        - name: DB_HOST
+          value: "{DATABASE_HOST_ADDRESS}"
+        - name: DB_PORT_NUMBER
+          value: "{DATABASE_PORT}"
+        - name: MM_CERT_FILE
+          value: "/etc/opt/certs/{CERT_FILE}"
+        - name: MM_KEY_FILE
+          value: "/etc/opt/certs/{KEY_FILE}"
+        volumeMounts:
+        - name: -mm-etc
+          mountPath: /etc/opt/certs
+        - name: -mm-config
+          mountPath: /mattermost/config
+      volumes:
+      - name: mm-etc
+        hostPath:
+          path: {CERT_PATH}
+      - name: mm-config
+        hostPath:
+          path: {CONFIG_FILE_PATH}

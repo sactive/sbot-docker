@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: -svc
+  namespace: {_NAMESPACE}
+spec:
+  ports:
+  - name: cr
+    port: 3000
+    targetPort: 3000
+  - name: slack-auth
+    port: 4000
+    targetPort: 4000
+  - name: msteams-auth
+    port: 8080
+    targetPort: 8080
+  # label keys and values that must match in order to receive traffic for this service
+  selector:
+    app: -chatbot

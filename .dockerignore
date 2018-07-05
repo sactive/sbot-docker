@@ -1,0 +1,14 @@
+sbot/*.xml
+sbot/README.md
+sbot/LICENSE
+sbot/.coffeelintignore
+sbot/.editorconfig
+sbot/.gitignore
+sbot/Jenkisfile
+sbot/docs
+sbot/test
+sbot/test_scripts
+sbot/third-party-licenses
+sbot/scripts
+sbot/Dockerfile*
+sbot/kubernetes
